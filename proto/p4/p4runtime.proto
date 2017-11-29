@@ -443,3 +443,15 @@ message GetForwardingPipelineConfigResponse {
   // TODO(wmohsin): Remove when clients have migrated to 'config' above
   repeated ForwardingPipelineConfig configs = 2 [deprecated = true];
 }
+
+// Per P4-entity level error used in a batch failure response.
+message Error {
+  int32 canonical_code;
+  string message;  // Detail message
+  string
+      space;  // Target and architecture specific space to which this error
+              // belongs.  We encourage using triplet: <target>-<arch>-<vendor>,
+              // e.g."bmv2-psa-p4org" or "tofino-psa-barefoot".
+  int32 code;  // Numeric code drawn from target-specific error space above.
+  protobuf.Any details;
+}
