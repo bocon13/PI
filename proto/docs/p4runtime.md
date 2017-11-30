@@ -335,16 +335,14 @@ their own error code and error space as well.
 
 ![P4 Runtime Error Proto](p4-runtime-error-proto.svg)
 
-P4 Runtime will populate the top-level error code as follows:
-- Use any canonical error code that best describes RPC-wide error. If the
-  entire batch has failed due to P4 Runtime connectivity issue, P4 Runtime
-  should return a canonical code that best describes the reason, e.g.
-  `NOT_FOUND`.
-- Use `UNKNOWN` top level error code for all Write RPC failures, whether
-  partial batch or total failures, e.g. one `RESOURCE_EXHAUSTED` and one
-  `INVALID_ARGUMENT`.
-- 2nd level canonical error (google.rpc.Status) should be same as top-level
-  canonical error code.
+P4 Runtime will populate the top-level error code as follows: - Use any
+canonical error code that best describes RPC-wide error. If the entire batch has
+failed due to P4 Runtime connectivity issue, P4 Runtime should return a
+canonical code that best describes the reason, e.g. `NOT_FOUND`. - Use `UNKNOWN`
+top level error code for all Write RPC failures, whether partial batch or total
+failures, e.g. one `RESOURCE_EXHAUSTED` and one `INVALID_ARGUMENT`. - 2nd level
+canonical error (google.rpc.Status) should be same as top-level canonical error
+code.
 
 When reporting per-entity level errors, P4 Runtime includes all batch request
 responses even if only a part of batch requests failed.
@@ -378,124 +376,61 @@ responses even if only a part of batch requests failed.
 
 ```
 
-
 ### Example of canonical code usage
 
 List of gRPC Canonical code is defined in
 [here](https://github.com/grpc/grpc-go/blob/master/codes/codes.go). Per each
 code, we expect controller to do as listed below.
 
-
-| Code                    | Failure types   | Example                          |
-| :---------------------- | :-------------- | :------------------------------- |
-| OK (0)                  | NA              | A successful Read RPC.           |
-| CANCELLED (1)           | Transient       | The Write RPC was cancelled due\ |
-|                         |                 | to failover or shutdown.\        |
-|                         |                 | Controller is expected to retry\ |
-|                         |                 | RPC in the near future.          |
-| UNKNOWN (2)             | Transient       | We don't know whether the Write\ |
-|                         |                 | RPC was succeeded or not.\       |
-|                         |                 | Controller is expected to Read\  |
-|                         |                 | RPC to understand the switch\    |
-|                         |                 | state and then either retry\     |
-|                         |                 | Write RPC or NO-OP based on the\ |
-|                         |                 | response. This error code\       |
-|                         |                 | serves as a default error code\  |
-|                         |                 | that cannot be expressed with\   |
-|                         |                 | rest of the canonical errors.    |
-| INVALID\_ARGUMENT (3)   | Permanent       | Write RPC was failed because\    |
-|                         |                 | the argument in the entry is\    |
-|                         |                 | not valid. Controller should\    |
-|                         |                 | not retry Write RPC unless\      |
-|                         |                 | root-cause the problem. A human\ |
-|                         |                 | intervention (e.g. bug fix) may\ |
-|                         |                 | be needed.                       |
-| DEADLINE\_EXCEEDED (4)  | Transient       | Write RPC was failed due to      |
-|                         |                 | stuck and deadline exceeded. We  |
-|                         |                 | don't know whether the Write     |
-|                         |                 | RPC was succeeded or not.        |
-|                         |                 | Controller is expected to Read   |
-|                         |                 | RPC to understand the switch     |
-|                         |                 | state and then try Write RPC     |
-|                         |                 | again or NO-OP based on the      |
-|                         |                 | response.                        |
-| NOT\_FOUND (5)          | Transient       | TBD. We generally don't expect   |
-|                         |                 | this error is set.               |
-| ALREADY\_EXISTS (6)     | Transient       | Write RPC was failed because     |
-|                         |                 | the entity already exists in     |
-|                         |                 | the switch, e.g. duplicate flow  |
-|                         |                 | installation. This is typically  |
-|                         |                 | caused by a controller bug.      |
-|                         |                 | Controller should not retry      |
-|                         |                 | Write RPC unless root-cause the  |
-|                         |                 | problem.                         |
-| PERMISSION\_DENIED (7)  | Transient       | Write RPC was failed due to      |
-|                         |                 | permission issue. Controller is  |
-|                         |                 | expected to retry Write RPC      |
-|                         |                 | automatically in the near        |
-|                         |                 | future after resolving the       |
-|                         |                 | permission issue.                |
-| RESOURCE\_EXHAUSTED (8) | Transient       | Write RPC was failed due to      |
-|                         |                 | resource exhaustion, e.g.        |
-|                         |                 | forwarding tables are full.      |
-|                         |                 | Controller is expected not to    |
-|                         |                 | retry Write RPC unless removing  |
-|                         |                 | surplus entities from the        |
-|                         |                 | switch or a new                  |
-|                         |                 | SetForwardingPipelineConfig to   |
-|                         |                 | adjust the pipeline.             |
-| FAILED\_PRECONDITION(9) | Transient       | Write RPC was failed because     |
-|                         |                 | certain precondition has not     |
-|                         |                 | been fulfilled to complete the   |
-|                         |                 | request. Example\: A flow is     |
-|                         |                 | requested to be installed while  |
-|                         |                 | the flow references to a         |
-|                         |                 | non-existent action profile      |
-|                         |                 | group. Controller is expected    |
-|                         |                 | to retry Write RPC               |
-|                         |                 | automatically in the near        |
-|                         |                 | future after resolving the       |
-|                         |                 | dependent condition.             |
-| ABORTED (10)            | Transient       | Write RPC was been explicitly    |
-|                         |                 | aborted. Controller is expected  |
-|                         |                 | to retry Write RPC               |
-|                         |                 | automatically in the near        |
-|                         |                 | future after the underlying      |
-|                         |                 | issue is resolved.               |
-| OUT\_OF\_RANGE(11)      | Transient       | TBD. We generally don't expect   |
-|                         |                 | this error is set.               |
-| UNIMPLEMENTED (12)      | Permanent       | Write RPC was failed because     |
-|                         |                 | the feature is not implemented   |
-|                         |                 | in the switch. Controller        |
-|                         |                 | should not retry Write RPC. A    |
-|                         |                 | human intervention (e.g. bug     |
-|                         |                 | fix or upgrade switch software)  |
-|                         |                 | is needed.                       |
-| INTERNAL (13)           | Permanent       | Write RPC caused a critical      |
-|                         |                 | error that put the switch in a   |
-|                         |                 | serious state where the switch   |
-|                         |                 | will no longer accept a new      |
-|                         |                 | Write RPC, except allowing Read  |
-|                         |                 | RPC or Subscribe. Controller     |
-|                         |                 | should not retry Write RPC. A    |
-|                         |                 | human intervention (e.g. bug     |
-|                         |                 | fix and reboot the switch) is    |
-|                         |                 | needed.                          |
-| UNAVAILABLE (14)        | Transient       | Write RPC was failed because     |
-|                         |                 | the switch is not reachable.     |
-|                         |                 | This is typically caused when    |
-|                         |                 | connection between switch and    |
-|                         |                 | controller is broken.            |
-|                         |                 | Controller is expected to retry  |
-|                         |                 | Write RPC in the near future.    |
-| DATA\_LOSS (15)         | Transient       | TBD. We generally don't expect   |
-|                         |                 | this error is set.               |
-| UNAUTHENTICATED (16)    | Transient       | Write RPC waas failed due to     |
-|                         |                 | permission issue. Controller is  |
-|                         |                 | expected to retry Write RPC      |
-|                         |                 | automatically in the near        |
-|                         |                 | future after resolving the       |
-|                         |                 | permission issue. A human        |
-|                         |                 | intervention (e.g. bug fix) may  |
-|                         |                 | be needed.                       |
-
+-   `OK (0)`: A successful Read PRC.
+-   `CANCELLED (1)`: The Write RPC was cancelled due to failover or shutdown.
+    Controller is expected to retry RPC in the near future.
+-   `UNKNOWN (2)`: We don't know whether the Write RPC was succeeded or not.
+    Controller is expected to Read RPC to understand the switch state and then
+    either retry Write RPC or NO-OP based on the response. This error code
+    serves as a default error code that cannot be expressed with rest of the
+    canonical errors.
+-   `INVALID_ARGUMENT (3)`: Write RPC was failed because the argument in the
+    entry is not valid. Controller should not retry Write RPC unless root-cause
+    the problem. A human intervention (e.g. bug fix) may be needed.
+-   `DEADLINE_EXCEEDED (4)`: Write RPC was failed due to stuck and deadline
+    exceeded. We don't know whether the Write RPC was succeeded or not.
+    Controller is expected to Read RPC to understand the switch state and then
+    try Write RPC again or NO-OP based on the response.
+-   `NOT_FOUND (5)`: TBD. We generally don't expect this error is set.
+-   `ALREADY_EXISTS (6)`: Write RPC was failed because the entity already exists
+    in the switch, e.g. duplicate flow installation. This is typically caused by
+    a controller bug. Controller should not retry Write RPC unless root-cause
+    the problem.
+-   `PERMISSION_DENIED (7)`: Write RPC was failed due to permission issue.
+    Controller is expected to retry Write RPC automatically in the near future
+    after resolving the permission issue.
+-   `RESOURCE_EXHAUSTED (8)`: Write RPC was failed due to resource exhaustion,
+    e.g. forwarding tables are full. Controller is expected not to retry Write
+    RPC unless removing surplus entities from the switch or a new
+    SetForwardingPipelineConfig to adjust the pipeline.
+-   `FAILED_PRECONDITION (9)`: Write RPC was failed because certain precondition
+    has not been fulfilled to complete the request. Example: A flow is requested
+    to be installed while the flow references to a non-existent action profile
+    group. Controller is expected to retry Write RPC automatically in the near
+    future after resolving the dependent condition.
+-   `ABORTED (10)`: Write RPC was been explicitly aborted. Controller is
+    expected to retry Write RPC automatically in the near future after the
+    underlying issue is resolved.
+-   `OUT_OF_RANGE(11)`: TBD. We generally don't expect this error is set.
+-   `UNIMPLEMENTED (12)`: Write RPC was failed because the feature is not
+    implemented in the switch. Controller should not retry Write RPC. A human
+    intervention (e.g. bug fix or upgrade switch software) is needed.
+-   `INTERNAL (13)`: Write RPC caused a critical error that put the switch in a
+    serious state where the switch will no longer accept a new Write RPC, except
+    allowing Read RPC or Subscribe. Controller should not retry Write RPC. A
+    human intervention (e.g. bug fix and reboot the switch) is needed.
+-   `UNAVAILABLE (14)`: Write RPC was failed because the switch is not
+    reachable. This is typically caused when connection between switch and
+    controller is broken. Controller is expected to retry Write RPC in the near
+    future.
+-   `DATA_LOSS (15)`: TBD. We generally don't expect this error is set.
+-   `UNAUTHENTICATED (16)`: Write RPC waas failed due to permission issue.
+    Controller is expected to retry Write RPC automatically in the near future
+    after resolving the permission issue. A human intervention (e.g. bug fix)
+    may be needed.
