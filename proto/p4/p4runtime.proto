@@ -446,7 +446,7 @@ message GetForwardingPipelineConfigResponse {
 
 // P4-entity level error used to report per-entity level programming error.
 message Error {
-  // gRPC-compliant Canonical code.
+  // gRPC-compliant canonical code.
   int32 canonical_code = 1;
   // Detailed error message.
   string message = 2;
