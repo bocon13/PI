@@ -335,14 +335,19 @@ their own error code and error space as well.
 
 ![P4 Runtime Error Proto](p4-runtime-error-proto.svg)
 
-P4 Runtime will populate the top-level error code as follows: - Use any
-canonical error code that best describes RPC-wide error. If the entire batch has
-failed due to P4 Runtime connectivity issue, P4 Runtime should return a
-canonical code that best describes the reason, e.g. `NOT_FOUND`. - Use `UNKNOWN`
-top level error code for all Write RPC failures, whether partial batch or total
-failures, e.g. one `RESOURCE_EXHAUSTED` and one `INVALID_ARGUMENT`. - 2nd level
-canonical error (google.rpc.Status) should be same as top-level canonical error
-code.
+P4 Runtime will populate the top-level error code as follows:
+
+-   Use any canonical error code that best describes RPC-wide error. If the
+    entire batch has failed due to P4 Runtime connectivity issue, P4 Runtime
+    should return a canonical code that best describes the reason, e.g.
+    `NOT_FOUND`.
+
+-   Use `UNKNOWN` top level error code for all Write RPC failures, whether
+    partial batch or totalfailures, e.g. one `RESOURCE_EXHAUSTED` and one
+    `INVALID_ARGUMENT`.
+
+-   2nd level canonical error (google.rpc.Status) should be same as top-level
+    canonical error code.
 
 When reporting per-entity level errors, P4 Runtime includes all batch request
 responses even if only a part of batch requests failed.
